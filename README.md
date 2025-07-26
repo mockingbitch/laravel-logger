@@ -5,11 +5,11 @@ The Logger package provides advanced logging capabilities for Laravel applicatio
 
 ## Installation
 ```bash
-composer require phongtran/logger
+  composer require phongtran/logger
 ```
 After installation, you can publish the configuration file if needed:
 ```bash
-php artisan vendor:publish --tag=logger
+  php artisan vendor:publish --tag=logger
 ```
 
 ## Configuration
