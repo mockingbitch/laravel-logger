@@ -6,6 +6,8 @@ use phongtran\Logger\App\Http\Middleware\LogActivity;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
+use phongtran\Logger\app\Services\LogService;
+use phongtran\Logger\app\Services\AbsLogService;
 
 /**
  * Logger Service Provider
@@ -49,9 +51,17 @@ class LoggerServiceProvider extends ServiceProvider
             $this->mergeConfigFrom(__DIR__ . '/config/logger.php', 'Logger');
         }
 
+        $this->loadRoutesFrom(__DIR__.'/routes/web.php');
+
         $this->app->singleton('logger', function ($app) {
             return new Logger();
         });
+        $this->app->singleton(AbsLogService::class, function ($app) {
+            return new LogService();
+        });
+
+//        $this->loadViewsFrom(__DIR__.'/resources/views/', 'Logger');
+        $this->loadMigrationsFrom(__DIR__.'/database/migrations');
 
         $this->registerEventListeners();
         $this->publishFiles();
@@ -77,6 +87,18 @@ class LoggerServiceProvider extends ServiceProvider
 
         $this->publishes([
             __DIR__ . '/config/logger.php' => base_path('config/logger.php'),
+        ], $publishTag);
+
+        $this->publishes([
+            __DIR__.'/resources/views' => base_path('resources/views/' . $publishTag),
+        ], $publishTag);
+
+        $this->publishes([
+            __DIR__.'/database/migrations' => base_path('database/migrations/' . $publishTag),
+        ], $publishTag);
+
+        $this->publishes([
+            __DIR__.'/public/vendor' => base_path('public/vendor/' . $publishTag),
         ], $publishTag);
     }
 }

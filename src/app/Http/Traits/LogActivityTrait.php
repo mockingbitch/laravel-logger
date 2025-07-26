@@ -3,11 +3,11 @@
 namespace phongtran\Logger\app\Http\Traits;
 
 use Illuminate\View\View;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * LogActivity Trait
+ * LogActivityTrait
  *
  * @package phongtran\Logger\app\Http\Traits
  * @copyright Copyright (c) 2024, jarvis.phongtran

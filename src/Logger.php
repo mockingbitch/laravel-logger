@@ -2,7 +2,9 @@
 
 namespace phongtran\Logger;
 
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use phongtran\Logger\app\Services\AbsLogService;
 use phongtran\Logger\app\Services\Definitions\LoggerDef;
 
 /**
@@ -23,10 +25,22 @@ class Logger
     private static function formatBacktrace(array $backtrace = []): string
     {
         $caller = $backtrace[1] ?? [];
-        $file = isset($caller['file'])
-            ? str_replace(base_path() . DIRECTORY_SEPARATOR, '', $caller['file'])
-            : 'unknown file';
-        $line = $caller['line'] ?? 'unknown line';
+
+        if (!isset($caller['file'])) {
+            return '<unknown file (Line:unknown)>';
+        }
+
+        $file = $caller['file'];
+        $line = $caller['line'] ?? 'unknown';
+
+        if (str_contains($file, DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR)) {
+            // If the file is inside the vendor directory → only keep the part after "vendor/"
+            $file = Str::after($file, 'vendor' . DIRECTORY_SEPARATOR);
+            $file = 'vendor/' . $file;
+        } else {
+            // If the file is inside base_path → shorten the path
+            $file = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file);
+        }
 
         return "<{$file} (Line:{$line})>";
     }
@@ -36,24 +50,38 @@ class Logger
      *
      * @param string $channel
      * @param string $level
-     * @param string $message
-     * @return void
+     * @param string|null $message
+     * @return mixed
      */
-    private static function log(string $channel, string $level, string $message): void
+    private static function log(string $channel, string $level, ?string $message): mixed
     {
-        $logMessage = $channel === LoggerDef::CHANNEL_ACTIVITY
-            ? json_encode($message)
-            : self::formatBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)) . " {$message}";
+        /** @var AbsLogService $logService */
+        $logService = app(AbsLogService::class);
+
+        // Format message for a channel type
+        $logMessage = match ($channel) {
+            LoggerDef::CHANNEL_ACTIVITY => json_encode($message, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            default => self::formatBacktrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2)) . " {$message}",
+        };
+
+        // Write log to channel
         Log::channel($channel)->log($level, $logMessage);
+
+        // Write log to DB
+        return app()->call([$logService, 'store'], [
+            'channel' => $channel,
+            'level' => $level,
+            'message' => $logMessage,
+        ]);
     }
 
     /**
      * Log a warning message.
      *
-     * @param string $message
+     * @param string|null $message
      * @return void
      */
-    public static function warning(string $message = ''): void
+    public static function warning(?string $message = ''): void
     {
         self::log(LoggerDef::CHANNEL_WARNING, LoggerDef::LEVEL_WARNING, $message);
     }
@@ -61,10 +89,10 @@ class Logger
     /**
      * Log a fatal error message.
      *
-     * @param string $message
+     * @param string|null $message
      * @return void
      */
-    public static function fatal(string $message = ''): void
+    public static function fatal(?string $message = ''): void
     {
         self::log(LoggerDef::CHANNEL_FATAL, LoggerDef::LEVEL_CRITICAL, $message);
     }
@@ -72,10 +100,10 @@ class Logger
     /**
      * Log an exception message.
      *
-     * @param string $message
+     * @param string|null $message
      * @return void
      */
-    public static function exception(string $message = ''): void
+    public static function exception(?string $message = ''): void
     {
         self::log(LoggerDef::CHANNEL_EXCEPTION, LoggerDef::LEVEL_ERROR, $message);
     }
@@ -83,10 +111,10 @@ class Logger
     /**
      * Log a debug message.
      *
-     * @param string $message
+     * @param string|null $message
      * @return void
      */
-    public static function debug(string $message = ''): void
+    public static function debug(?string $message = ''): void
     {
         self::log(LoggerDef::CHANNEL_DEBUG, LoggerDef::LEVEL_DEBUG, $message);
     }
@@ -94,10 +122,10 @@ class Logger
     /**
      * Log an informational message.
      *
-     * @param string $message
+     * @param string|null $message
      * @return void
      */
-    public static function info(string $message = ''): void
+    public static function info(?string $message = ''): void
     {
         self::log(LoggerDef::CHANNEL_INFO, LoggerDef::LEVEL_INFO, $message);
     }
@@ -105,24 +133,30 @@ class Logger
     /**
      * Log an activity message.
      *
-     * @param string $message
+     * @param string|null $message
      * @return mixed
      */
-    public static function activity(string $message = ''): mixed
+    public static function activity(?string $message = ''): mixed
     {
-        return self::log(LoggerDef::CHANNEL_ACTIVITY, LoggerDef::LEVEL_INFO, $message);
+        return self   ::log(LoggerDef::CHANNEL_ACTIVITY, LoggerDef::LEVEL_INFO, $message);
     }
 
     /**
      * Log an sql query.
      *
-     * @param string $query
+     * @param string|null $query
      * @param float $executionTime
-     * @return void
+     * @return mixed
      */
-    public static function sql(string $query = '', float $executionTime = 0): void
+    public static function sql(?string $query = '', float $executionTime = 0): mixed
     {
+        $logService = app(AbsLogService::class);
         Log::channel(LoggerDef::CHANNEL_SQL)
             ->log(LoggerDef::LEVEL_INFO, "[ExecutionTime: {$executionTime}ms] {$query}");
+
+        return app()->call([$logService, 'storeSqlQuery'], [
+            'query' => $query,
+            'executionTime' => $executionTime,
+        ]);
     }
 }

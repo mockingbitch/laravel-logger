@@ -25,15 +25,25 @@ trait LoggerConstantTrait
     ];
 
     /**
+     * Get type
+     *
+     * @return array
+     */
+    public static function getType() : array
+    {
+        return self::$type;
+    }
+
+    /**
      * @var array|string[] $levelClasses
      */
     private static array $levelClasses = [
         self::LEVEL_INFO => 'success',
-        self::LEVEL_DEBUG => 'info',
-        self::LEVEL_ERROR => 'danger',
-        self::LEVEL_WARNING => 'warning',
         self::LEVEL_CRITICAL => 'danger',
+        self::LEVEL_ERROR => 'danger',
         self::LEVEL_ACTIVITY => 'success',
+        self::LEVEL_WARNING => 'warning',
+        self::LEVEL_DEBUG => 'info',
     ];
 
     /**

@@ -24,7 +24,7 @@ class LoggerHandler
     {
         $exceptions->render(function (Throwable $e) {
             $message = self::formatExceptionMessage($e);
-            Logger::exception($message);
+            Logger::fatal($message);
         });
     }
 
