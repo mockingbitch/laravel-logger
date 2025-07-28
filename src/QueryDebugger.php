@@ -4,6 +4,7 @@ namespace phongtran\Logger;
 
 use DateTime;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\App;
 
 /**
  * Query Debugger
@@ -21,7 +22,22 @@ class QueryDebugger
      */
     public static function setup(): void
     {
+        // Only enable in non-production environments by default
+        if (App::environment('production') && !config('logger.enable_query_debugger_production', false)) {
+            return;
+        }
+        
+        // Laravel 12 compatibility - check if DB facade is available
+        if (!class_exists('Illuminate\Support\Facades\DB')) {
+            return;
+        }
+        
         DB::listen(function ($sql) {
+            // Skip if execution time is too fast (performance optimization)
+            if ($sql->time < config('logger.min_query_time', 0)) {
+                return;
+            }
+            
             // Extract the table name (this is a basic approach and might need adjustment based on query structure)
             $table = '';
             if (
@@ -32,17 +48,19 @@ class QueryDebugger
                 $table = self::removeSemicolon($matches[1]);
             }
             if (!in_array($table, self::getIgnoredTables())) {
-                foreach ($sql->bindings as $index => $binding) {
+                $bindings = [];
+                foreach ($sql->bindings as $binding) {
                     if ($binding instanceof DateTime) {
-                        $sql->bindings[$index] = $binding->format('\'Y-m-d H:i:s\'');
+                        $bindings[] = $binding->format('Y-m-d H:i:s');
+                    } elseif (is_string($binding)) {
+                        $bindings[] = $binding;
                     } else {
-                        if (is_string($binding)) {
-                            $sql->bindings[$index] = "'$binding'";
-                        }
+                        $bindings[] = (string) $binding;
                     }
                 }
-                $query = str_replace(['%', '?'], ['%%', '%s'], $sql->sql);
-                $query = vsprintf($query, $sql->bindings);
+                
+                // Use parameterized query for logging to prevent SQL injection
+                $query = $sql->sql;
                 $executionTime = $sql->time;
                 Logger::sql($query, $executionTime);
             }

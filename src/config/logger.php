@@ -44,6 +44,8 @@ return [
     |
     */
     'enable_query_debugger' => env('ENABLE_QUERY_DEBUGGER', false),
+    'enable_query_debugger_production' => env('ENABLE_QUERY_DEBUGGER_PRODUCTION', false),
+    'min_query_time' => env('LOGGER_MIN_QUERY_TIME', 0), // Minimum query time to log (in milliseconds)
     'table' => env('LOGGER_TABLE', 'logs'),
     'query_table' => env('LOGGER_QUERY_TABLE', 'log_queries'),
     'connection' => env('LOGGER_CONNECTION', env('DB_CONNECTION', 'mysql')),

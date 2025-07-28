@@ -96,8 +96,8 @@ class Log extends Model
         return $this->table;
     }
 
-    public function log(): HasMany
+    public function logQueries(): HasMany
     {
-        return $this->hasMany(Log::class, 'activity_id');
+        return $this->hasMany(LogQuery::class, 'activity_id');
     }
 }
