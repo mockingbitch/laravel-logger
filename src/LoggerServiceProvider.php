@@ -3,7 +3,6 @@
 namespace phongtran\Logger;
 
 use phongtran\Logger\app\Http\Middleware\LogActivity;
-use phongtran\Logger\app\Http\Controllers\LoggerController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
@@ -31,6 +30,8 @@ class LoggerServiceProvider extends ServiceProvider
         if ($router) {
             $router->middlewareGroup('activity', [LogActivity::class]);
         }
+        
+        // Routes are now handled by RouteServiceProvider
         
         if (Config::get('logger')) {
             $existingLogging = Config::get('logging', []);
@@ -63,10 +64,7 @@ class LoggerServiceProvider extends ServiceProvider
             $this->mergeConfigFrom(__DIR__ . '/config/logger.php', 'Logger');
         }
 
-        // Load routes from file (fallback)
-        if (file_exists(__DIR__.'/routes/web.php')) {
-            $this->loadRoutesFrom(__DIR__.'/routes/web.php');
-        }
+        // Routes will be registered via registerRoutes() method
 
         $this->app->singleton('logger', function ($app) {
             return new Logger();
@@ -83,9 +81,6 @@ class LoggerServiceProvider extends ServiceProvider
         
         // Laravel 12 compatibility - register middleware
         $this->registerMiddleware();
-        
-        // Register routes explicitly
-        $this->registerRoutes();
         
         // Load helpers
         if (file_exists(__DIR__ . '/helpers.php')) {
@@ -107,24 +102,7 @@ class LoggerServiceProvider extends ServiceProvider
         }
     }
 
-    /**
-     * Register routes explicitly
-     *
-     * @return void
-     */
-    private function registerRoutes(): void
-    {
-        $router = app('router');
-        
-        $router->group([
-            'prefix' => 'logger',
-            'middleware' => ['web'],
-            'namespace' => 'phongtran\Logger\app\Http\Controllers'
-        ], function ($router) {
-            $router->get('/', [LoggerController::class, 'index'])->name('log.index');
-            $router->get('/{id}', [LoggerController::class, 'detail'])->name('log.detail');
-        });
-    }
+
 
     /**
      * Register the list of listeners and events.
