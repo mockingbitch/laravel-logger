@@ -2,7 +2,8 @@
 
 namespace phongtran\Logger;
 
-use phongtran\Logger\App\Http\Middleware\LogActivity;
+use phongtran\Logger\app\Http\Middleware\LogActivity;
+use phongtran\Logger\app\Http\Controllers\LoggerController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
@@ -21,17 +22,28 @@ class LoggerServiceProvider extends ServiceProvider
     /**
      * Bootstrap the application services.
      *
-     * @param Router $router
+     * @param Router|null $router
      * @return void
      */
-    public function boot(Router $router): void
+    public function boot(?Router $router = null): void
     {
-        $router->middlewareGroup('activity', [LogActivity::class]);
+        // Laravel 12 compatibility - router might be null
+        if ($router) {
+            $router->middlewareGroup('activity', [LogActivity::class]);
+        }
+        
         if (Config::get('logger')) {
-            Config::set('logging', array_merge(
-                Config::get('logging'),
-                Config::get('logger')
-            ));
+            $existingLogging = Config::get('logging', []);
+            $loggerConfig = Config::get('logger', []);
+            
+            // Only merge channels to avoid overwriting Laravel's core logging config
+            if (isset($loggerConfig['channels']) && is_array($loggerConfig['channels'])) {
+                $existingLogging['channels'] = array_merge(
+                    $existingLogging['channels'] ?? [],
+                    $loggerConfig['channels']
+                );
+                Config::set('logging', $existingLogging);
+            }
         }
         if (config('logger.enable_query_debugger')) {
             QueryDebugger::setup();
@@ -51,7 +63,10 @@ class LoggerServiceProvider extends ServiceProvider
             $this->mergeConfigFrom(__DIR__ . '/config/logger.php', 'Logger');
         }
 
-        $this->loadRoutesFrom(__DIR__.'/routes/web.php');
+        // Load routes from file (fallback)
+        if (file_exists(__DIR__.'/routes/web.php')) {
+            $this->loadRoutesFrom(__DIR__.'/routes/web.php');
+        }
 
         $this->app->singleton('logger', function ($app) {
             return new Logger();
@@ -60,11 +75,55 @@ class LoggerServiceProvider extends ServiceProvider
             return new LogService();
         });
 
-//        $this->loadViewsFrom(__DIR__.'/resources/views/', 'Logger');
+        $this->loadViewsFrom(__DIR__.'/resources/views/', 'logger');
         $this->loadMigrationsFrom(__DIR__.'/database/migrations');
 
         $this->registerEventListeners();
         $this->publishFiles();
+        
+        // Laravel 12 compatibility - register middleware
+        $this->registerMiddleware();
+        
+        // Register routes explicitly
+        $this->registerRoutes();
+        
+        // Load helpers
+        if (file_exists(__DIR__ . '/helpers.php')) {
+            require_once __DIR__ . '/helpers.php';
+        }
+    }
+    
+    /**
+     * Register middleware for Laravel 12 compatibility
+     *
+     * @return void
+     */
+    private function registerMiddleware(): void
+    {
+        // Check if we're in Laravel 12+ where router is not passed to boot method
+        if (app()->bound('router')) {
+            $router = app('router');
+            $router->middlewareGroup('activity', [LogActivity::class]);
+        }
+    }
+
+    /**
+     * Register routes explicitly
+     *
+     * @return void
+     */
+    private function registerRoutes(): void
+    {
+        $router = app('router');
+        
+        $router->group([
+            'prefix' => 'logger',
+            'middleware' => ['web'],
+            'namespace' => 'phongtran\Logger\app\Http\Controllers'
+        ], function ($router) {
+            $router->get('/', [LoggerController::class, 'index'])->name('log.index');
+            $router->get('/{id}', [LoggerController::class, 'detail'])->name('log.detail');
+        });
     }
 
     /**

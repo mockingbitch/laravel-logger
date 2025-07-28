@@ -3,6 +3,8 @@
 ## Introduction
 The Logger package provides advanced logging capabilities for Laravel applications. It allows you to easily record messages at various levels (such as warning, error, debug, etc.), log SQL queries, and store logs through a custom service. This package supports multiple logging channels, formats backtrace information, and integrates smoothly with Laravel's existing logging system.
 
+**Compatibility**: Laravel 10.x, 11.x, and 12.x
+
 ## Installation
 ```bash
   composer require phongtran/logger
@@ -18,6 +20,8 @@ Make sure the required parameters are configured in the config/logger.php or .en
 
 ```.env
     ENABLE_QUERY_DEBUGGER=true
+    ENABLE_QUERY_DEBUGGER_PRODUCTION=false
+    LOGGER_MIN_QUERY_TIME=0
 ```
 
 ## Usage
@@ -81,6 +85,8 @@ Route::group(['middleware' => 'activity'], function () {
 
 #### HTTP Exception
 Add this line in Handle Exceptions (bootstrap/app.php)
+
+**For Laravel 12:**
 ```php
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -95,10 +101,51 @@ return Application::configure(basePath: dirname(__DIR__))
     })->create();
 ```
 
+**For Laravel 11:**
+```php
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',
+        commands: __DIR__.'/../routes/console.php',
+        health: '/up',
+    )
+    ->withMiddleware(function (Middleware $middleware) {
+    })
+    ->withExceptions(function (Exceptions $exceptions) {
+        \phongtran\Logger\LoggerHandler::handle($exceptions); //Log exceptions
+    })->create();
+```
+
+**For Laravel 10 and below:**
+```php
+// In app/Exceptions/Handler.php
+public function register(): void
+{
+    $this->reportable(function (Throwable $e) {
+        \phongtran\Logger\LoggerHandler::handleLegacy($this);
+    });
+}
+```
+
 ## Advanced Features
 #### Backtrace Formatting
 
 The Logger automatically adds backtrace information (file and line number) to logs to make debugging easier. This allows you to track the location where the log is generated in the code.
+
+#### Debug Routes
+
+If you're having issues with the `/logger` routes, you can debug them using:
+
+```php
+// In your application
+dd(logger_routes_debug());
+
+// Or check routes in tinker
+php artisan tinker
+>>> logger_routes_debug()
+```
+
+This will show you all registered logger routes and help identify any issues.
 
 Example of a log message with backtrace:
 

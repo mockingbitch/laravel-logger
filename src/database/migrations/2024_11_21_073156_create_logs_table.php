@@ -26,7 +26,7 @@ return new class extends Migration
                 $table->string('level', 10);
                 $table->longText('message')->nullable();
                 $table->integer('user_id')->nullable();
-                $table->ipAddress('ipAddress')->nullable();
+                $table->string('ipAddress', 45)->nullable();
                 $table->text('userAgent')->nullable();
                 $table->string('locale')->nullable();
                 $table->integer('activity_id')->nullable();

@@ -2,8 +2,8 @@
 
 namespace phongtran\Logger;
 
-use Illuminate\Foundation\Configuration\Exceptions;
 use Throwable;
+use Illuminate\Support\Facades\App;
 
 /**
  * LoggerHandler
@@ -15,14 +15,39 @@ use Throwable;
 class LoggerHandler
 {
     /**
-     * Handler
+     * Handler for Laravel 11+ and 12
      *
-     * @param Exceptions $exceptions
+     * @param mixed $exceptions
      * @return void
      */
-    public static function handle(Exceptions $exceptions): void
+    public static function handle($exceptions): void
     {
-        $exceptions->render(function (Throwable $e) {
+        // Check if we're using Laravel 11+ (which has the new Exceptions class)
+        if (class_exists('Illuminate\Foundation\Configuration\Exceptions') && $exceptions instanceof \Illuminate\Foundation\Configuration\Exceptions) {
+            $exceptions->render(function (Throwable $e) {
+                $message = self::formatExceptionMessage($e);
+                Logger::fatal($message);
+            });
+        }
+        
+        // Laravel 12 compatibility - check for the new exception handling
+        if (method_exists($exceptions, 'reportable')) {
+            $exceptions->reportable(function (Throwable $e) {
+                $message = self::formatExceptionMessage($e);
+                Logger::fatal($message);
+            });
+        }
+    }
+
+    /**
+     * Handler for Laravel 10 and below
+     *
+     * @param \Illuminate\Contracts\Debug\ExceptionHandler $handler
+     * @return void
+     */
+    public static function handleLegacy($handler): void
+    {
+        $handler->reportable(function (Throwable $e) {
             $message = self::formatExceptionMessage($e);
             Logger::fatal($message);
         });

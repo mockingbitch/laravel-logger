@@ -35,9 +35,13 @@ class LogService extends AbsLogService
      */
     public function get(?string $channel = null, int $perPage = 20, string $sort = 'desc'): mixed
     {
+        // Validate parameters
+        $perPage = max(1, min(100, $perPage)); // Limit perPage between 1 and 100
+        $sort = in_array(strtolower($sort), ['asc', 'desc']) ? strtolower($sort) : 'desc';
+        
         $query = Log::query();
 
-        if ($channel) {
+        if ($channel && is_string($channel)) {
             $query->where('channel', $channel);
         }
 
@@ -54,7 +58,7 @@ class LogService extends AbsLogService
      */
     public function show(int $id): ?Log
     {
-        return Log::with(['log'])->find($id);
+        return Log::with(['logQueries'])->find($id);
     }
 
     /**
@@ -68,6 +72,11 @@ class LogService extends AbsLogService
     public function updateActivity(int $id, $executionTime, array $response = []): ?Log
     {
         $log = $this->show($id);
+        
+        if (!$log) {
+            return null;
+        }
+        
         $log->execution_time = $executionTime;
         $log->response = json_encode($response);
         $log->save();
