@@ -3,6 +3,7 @@
 namespace phongtran\Logger;
 
 use phongtran\Logger\app\Http\Middleware\LogActivity;
+use phongtran\Logger\app\Http\Controllers\LoggerController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\ServiceProvider;
@@ -31,7 +32,8 @@ class LoggerServiceProvider extends ServiceProvider
             $router->middlewareGroup('activity', [LogActivity::class]);
         }
         
-        // Routes are now handled by RouteServiceProvider
+        // Register routes directly in ServiceProvider
+        $this->registerRoutes();
         
         if (Config::get('logger')) {
             $existingLogging = Config::get('logging', []);
@@ -100,6 +102,28 @@ class LoggerServiceProvider extends ServiceProvider
             $router = app('router');
             $router->middlewareGroup('activity', [LogActivity::class]);
         }
+    }
+
+    /**
+     * Register routes directly
+     *
+     * @return void
+     */
+    private function registerRoutes(): void
+    {
+        if (!app()->bound('router')) {
+            return;
+        }
+        
+        $router = app('router');
+        
+        $router->group([
+            'prefix' => 'logger',
+            'middleware' => ['web'],
+        ], function ($router) {
+            $router->get('/', [LoggerController::class, 'index'])->name('log.index');
+            $router->get('/{id}', [LoggerController::class, 'detail'])->name('log.detail');
+        });
     }
 
 
