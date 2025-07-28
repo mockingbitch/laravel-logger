@@ -11,8 +11,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "phongtran\\Logger\\LoggerServiceProvider",
-                "phongtran\\Logger\\RouteServiceProvider"
+                "phongtran\\Logger\\LoggerServiceProvider"
             ],
             "aliases": {
                 "Logger": "phongtran\\Logger\\Facades\\Logger"

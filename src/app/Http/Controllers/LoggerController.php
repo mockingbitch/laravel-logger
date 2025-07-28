@@ -32,14 +32,22 @@ class LoggerController
      */
     public function index(): View|Factory|Application
     {
-        $channel = request()->query('channel');
-        $perPage = request()->query('perPage', 20);
-        $sort = request()->query('sort', 'desc');
+        try {
+            $channel = request()->query('channel');
+            $perPage = request()->query('perPage', 20);
+            $sort = request()->query('sort', 'desc');
 
-        return view('logger.index', [
-            'logs' => $this->logService->get($channel, (int)$perPage, $sort) ?? null,
-            'currentChannel' => $channel ?? null,
-        ]);
+            return view('logger.index', [
+                'logs' => $this->logService->get($channel, (int)$perPage, $sort) ?? null,
+                'currentChannel' => $channel ?? null,
+            ]);
+        } catch (\Exception $e) {
+            // Return a simple response if view is not found
+            return response()->json([
+                'message' => 'Logger dashboard is not available',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -50,8 +58,16 @@ class LoggerController
      */
     public function detail($id): Factory|View|Application
     {
-        return view('logger.detail', [
-            'log' => $this->logService->show($id) ?? null,
-        ]);
+        try {
+            return view('logger.detail', [
+                'log' => $this->logService->show($id) ?? null,
+            ]);
+        } catch (\Exception $e) {
+            // Return a simple response if view is not found
+            return response()->json([
+                'message' => 'Logger detail is not available',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
