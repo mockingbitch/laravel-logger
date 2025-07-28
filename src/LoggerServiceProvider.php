@@ -6,6 +6,7 @@ use phongtran\Logger\app\Http\Middleware\LogActivity;
 use phongtran\Logger\app\Http\Controllers\LoggerController;
 use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use phongtran\Logger\app\Services\LogService;
 use phongtran\Logger\app\Services\AbsLogService;
@@ -66,8 +67,6 @@ class LoggerServiceProvider extends ServiceProvider
             $this->mergeConfigFrom(__DIR__ . '/config/logger.php', 'Logger');
         }
 
-        // Routes will be registered via registerRoutes() method
-
         $this->app->singleton('logger', function ($app) {
             return new Logger();
         });
@@ -88,6 +87,8 @@ class LoggerServiceProvider extends ServiceProvider
         if (file_exists(__DIR__ . '/helpers.php')) {
             require_once __DIR__ . '/helpers.php';
         }
+        
+        // Routes will be registered in boot method
     }
     
     /**
@@ -115,14 +116,13 @@ class LoggerServiceProvider extends ServiceProvider
             return;
         }
         
-        $router = app('router');
-        
-        $router->group([
+        // Use Route facade directly
+        Route::group([
             'prefix' => 'logger',
             'middleware' => ['web'],
-        ], function ($router) {
-            $router->get('/', [LoggerController::class, 'index'])->name('log.index');
-            $router->get('/{id}', [LoggerController::class, 'detail'])->name('log.detail');
+        ], function () {
+            Route::get('/', [LoggerController::class, 'index'])->name('log.index');
+            Route::get('/{id}', [LoggerController::class, 'detail'])->name('log.detail');
         });
     }
 
